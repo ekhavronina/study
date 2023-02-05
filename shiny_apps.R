@@ -1,40 +1,11 @@
 library(shiny)
 library(shinythemes)
 library(ggplot2)
-library(babynames)
 library(dplyr)
+library(babynames)     # babynames dataset
 
-# App 1
-ui <- fluidPage(
-  titlePanel("Baby Names Popularity"),
-  shinythemes::themeSelector(),
   
-  sidebarLayout(
-    sidebarPanel(
-      textInput("name", "Enter Name:", "David")
-      ),
-  
-    mainPanel(
-      plotOutput("trend")
-    )
-  )
-)
-
-server <- function(input, output) {
-  output$trend <- renderPlot({
-    data_name <- subset(babynames, 
-                        name == input$name
-                        )
-    ggplot(data_name, aes(x=year, y=prop, color=sex)) +
-             geom_line()
-      
-  })
-}
-
-shinyApp(ui = ui, server = server)
-
-
-# App 2
+# App 1: Most popular baby names by year and sex
 
 ui <- fluidPage(
   titlePanel("Most Popular Names"),
@@ -43,7 +14,9 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       selectInput("sex", "Select Sex", choices = c("M", "F")),
-      sliderInput("year", "Select Year", min=1880, max=2017, value=1880)
+      sliderInput("year", "Select Year", min=1880, max=2017, value=1880),
+      actionButton("show_names", "Show Names"),
+      actionButton("show_help", "Help")
     ),
     mainPanel(
       tabsetPanel(
@@ -55,12 +28,22 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  get_top10_names <- function() {
+  
+  # observe({
+  #   showNotification("Welcome!", type = "message")
+  # })
+  observeEvent(input$show_help, {
+    showModal(modalDialog("Choose sex and year, then click to \"Show Names\"
+                          to see Top-10 baby names"))
+  })
+  
+  # reactive expression is cached, so it will be executed only once
+  get_top10_names <- eventReactive(input$show_names, {
     babynames %>%
       filter(sex == input$sex) %>%
       filter(year == input$year) %>%
       slice_max(prop, n=10)
-  }
+  })
   
   output$plot <- renderPlot({
     ggplot(get_top10_names(), aes(x = name, y = prop, label = n)) +
